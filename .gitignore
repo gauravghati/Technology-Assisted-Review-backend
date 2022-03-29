@@ -1,0 +1,9 @@
+/env
+/mainapp/__pycache__
+/veritas/__pycache__
+/mainapp/migrations/__pycache__
+
+db.sqlite3
+/ml/components
+/ml/__pycache__
+/ml/scripts/__pycache__
