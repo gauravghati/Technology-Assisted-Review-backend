@@ -7,3 +7,4 @@ db.sqlite3
 /ml/components
 /ml/__pycache__
 /ml/scripts/__pycache__
+/components/

@@ -5,12 +5,15 @@ FRONTEND_FOLDER = "frontend-veritas/"
 PDF_FOLDER_LOCATION = "public/dataset/"
 COMPONENT_FOLDER = "ml/components/"
 SCRIPT_FOLDER = "ml/scripts/"
-TOKENIZED_FILE = "tokenized_data_final.csv"
+COMPLETE_DATAFILE = "complete_datafile.csv"
+REMAINING_DATAFILE = "remaining_datafile.csv"
 TRAINED_MODEL = 'trained_model.h5'
+BLANK_MODEL = "blank_model_4classes.h5"
 
 BERT_MODEL = 'bert-base-uncased'
 CASED = 'uncased' in BERT_MODEL
 MAXLEN = 600
+EPOCHS = 3
 
 import pandas as pd
 from fpdf import FPDF
@@ -23,21 +26,24 @@ import numpy as np
 from tqdm import tqdm
 from tensorflow import keras
 
-ID = "id"
-TITLE = "title"
-TEXT = "text"
-TOKEN = "Tokenized"
-CLASS = "Class Index"
-COLUMNS = (
-    (ID, "id"),
-    (CLASS, "Class Index"),
-    (TITLE, "title"),
-    (TEXT, "text"),
-    (TOKEN, "Tokenized"),
-)
+class dotdict(dict):
+    """dot.notation access to dictionary attributes"""
+    __getattr__ = dict.get
+    __setattr__ = dict.__setitem__
+    __delattr__ = dict.__delitem__
 
+COLUMNS = dotdict( {
+  "ID": "id",
+  "CLASS": "Class Index",
+  "TITLE": "title",
+  "TEXT": "text",
+  "TOKEN": "Tokenized"
+})
+
+# will take the data from "tokenized_data_final.csv" and 
+# create the objects of document in database and also pdf files.
 def create_pdf_file( NUM_DOC ):
-    data = pd.read_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + TOKENIZED_FILE )
+    data = pd.read_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + COMPLETE_DATAFILE )
     data = data[0 : NUM_DOC]
 
     for index, row in data.iterrows():
@@ -76,17 +82,20 @@ def create_pdf_file( NUM_DOC ):
         os.remove(pdf_path)
 
 
-def trainDocs( NUM_TRAIN ):
-    df = pd.read_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + TOKENIZED_FILE )
+# initial training => fetching data from csv file, by default 50 Documents per class and intially training the model
+def initTrainFun( NUM_TRAIN = 50 ):
+    df = pd.read_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + COMPLETE_DATAFILE )
     remain_df, train = sliceDocsFromDataset( df, NUM_TRAIN )
-    model = keras.models.load_model( COMPONENT_FOLDER + TRAINED_MODEL )
+    model = keras.models.load_model( COMPONENT_FOLDER + BLANK_MODEL )
     trainModel( model, train )
     model.save( COMPONENT_FOLDER + TRAINED_MODEL )
+    remain_df.to_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + REMAINING_DATAFILE )
 
 
+# passing the df model gets trained on it.
 def trainModel(model, train_data, validation_split = 0):
   X_train, y_train = deepLearningPrep(train_data)
-  history = model.fit(X_train, y_train, epochs = 20,batch_size = 4, verbose = 1)
+  history = model.fit(X_train, y_train, epochs = EPOCHS, batch_size = 4, verbose = 1)
   return model, history
 
 

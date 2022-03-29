@@ -5,7 +5,7 @@ from mainapp.serializers import DocumentSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
-from ml.scripts.token_file_to_pdf import create_pdf_file, trainDocs
+from ml.scripts.token_file_to_pdf import create_pdf_file, initTrainFun
 
 @api_view(['POST'])
 def createDocument(request):
@@ -82,6 +82,11 @@ def getMostUncertainDoc(request):
 
 @api_view(['GET'])
 def createPDF(request):
-    create_pdf_file(1)
-    trainDocs(1)
+    create_pdf_file(50)
+    return JsonResponse({"test" : "PDFs created"}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def initTrain(request):
+    initTrainFun()
     return JsonResponse({"test" : "all is well"}, status=status.HTTP_200_OK)

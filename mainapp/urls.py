@@ -8,4 +8,5 @@ urlpatterns = [
     path('updatedoc/', views.updateDocument, name='updateDocument'),
     path('documentlist/', views.documentList, name='documentList'),
     path('createpdf/', views.createPDF, name='createPDF'),
+    path('inittrain/', views.initTrain, name='initTrain'),
 ]
