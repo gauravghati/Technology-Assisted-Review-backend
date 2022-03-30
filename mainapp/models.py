@@ -1,38 +1,28 @@
 from django.db import models
 from django.core.files.storage import FileSystemStorage
+from model_utils import Choices
 
 UPLOAD_ROOT = "../frontend-veritas/public/"
 upload_storage = FileSystemStorage(location=UPLOAD_ROOT)
 
-PDF = "PDF"
-TEXT = "Text"
-PIC = "Picture"
-TYPE_CHOICES = (
-    (PDF, "PDF"),
-    (TEXT, "Text"),
-    (PIC, "Picture"),
+TYPE_CHOICES = Choices(
+    ("pdf", "pdf"),
+    ("text", "text"),
+    ("pict", "pict")
 )
 
-NULL = "null"
-Label0 = "Label 0"
-Label1 = "Label 1"
-Label2 = "Label 2"
-Label3 = "Label 3"
-LABEL_CHOICES = (
-    (NULL, "null"),
-    (Label0, "Label 0"),
-    (Label1, "Label 1"),
-    (Label2, "Lable 2"),
-    (Label3, "Lable 3"),
+LABEL_CHOICES = Choices(
+    ("null", "null"),
+    ("label_0", "label_0"),
+    ("label_1", "label_1"),
+    ("label_2", "label_2"),
+    ("label_3", "label_3")
 )
 
-InQue = "in queue"
-Used = "used for training"
-NotUsed = "not used yet"
-TRAIN_CHOICES = (
-    (NotUsed, "not used yet"),
-    (InQue, "in queue"),
-    (Used, "used for training"),
+TRAIN_CHOICES = Choices(
+    ("not_used", "not_used"),
+    ("in_queue", "in_queue"),
+    ("used", "used")
 )
 
 class Document(models.Model):

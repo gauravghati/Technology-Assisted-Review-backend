@@ -5,7 +5,7 @@ from mainapp.serializers import DocumentSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
-from ml.scripts.token_file_to_pdf import create_pdf_file, initTrainFun
+from ml.scripts.token_file_to_pdf import create_pdf_file, init_train, retrain_single_doc
 
 @api_view(['POST'])
 def createDocument(request):
@@ -88,5 +88,12 @@ def createPDF(request):
 
 @api_view(['GET'])
 def initTrain(request):
-    initTrainFun()
-    return JsonResponse({"test" : "all is well"}, status=status.HTTP_200_OK)
+    init_train()
+    return JsonResponse({"test" : "Initial model trained"}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+def reTrain(request):
+    doc = Document.objects.get( auto_id = 287 )
+    retrain_single_doc( doc )
+    return JsonResponse({"test" : "single model trained"}, status=status.HTTP_200_OK)
