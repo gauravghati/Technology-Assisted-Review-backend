@@ -15,7 +15,7 @@ CASED = 'uncased' in BERT_MODEL
 MAXLEN = 600
 EPOCHS = 3
 
-from typing import Collection
+from sys import prefix
 import pandas as pd
 from fpdf import FPDF
 from django.core.files.base import File
@@ -26,7 +26,6 @@ import numpy as np
 from tqdm import tqdm
 from tensorflow import keras
 from mainapp.models import TRAIN_CHOICES, Document
-from model_utils import Choices
 
 class dotdict(dict):
     """dot.notation access to dictionary attributes"""
@@ -113,7 +112,6 @@ def addToDatafram( df, main_doc_label, curr_label ):
     df = df.append( val, ignore_index = True )
     return df
 
-
 # retraining => retraing model on single doc.
 def retrain_single_doc( main_doc ):
     df = pd.DataFrame(columns = [COLUMNS.ID, COLUMNS.CLASS, COLUMNS.TITLE, COLUMNS.TEXT, COLUMNS.TOKEN])
@@ -151,11 +149,57 @@ def init_train( NUM_TRAIN = 50 ):
     remain_df.to_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + REMAINING_DATAFILE )
 
 
+def preditDaily():
+    docs = Document.objects.all()
+    df = pd.DataFrame(columns = [COLUMNS.ID, COLUMNS.CLASS, COLUMNS.TITLE, COLUMNS.TEXT, COLUMNS.TOKEN])
+    model = keras.models.load_model( COMPONENT_FOLDER + TRAINED_MODEL )
+
+    for doc in docs :
+        val = {
+            COLUMNS.ID : doc.auto_id,
+            COLUMNS.TITLE : doc.document_name,
+            COLUMNS.TEXT : doc.document_text,
+            COLUMNS.TOKEN : doc.document_token,
+            COLUMNS.CLASS : "",
+        }
+        single_df = df.append( val, ignore_index = True )
+        X_df, Y_df = deep_learning_prep(single_df)
+
+        predict_arr = model.predict(X_df)[0]
+        doc.class_a_predit_percentage = predict_arr[0] * 100
+        doc.class_b_predit_percentage = predict_arr[1] * 100
+        doc.class_c_predit_percentage = predict_arr[2] * 100
+        doc.class_d_predit_percentage = predict_arr[3] * 100
+
+        max_val = predict_arr[0]
+        sum = 0
+        doc_label = 0
+        for i in range(0, 4):
+            sum += predict_arr[i]
+            if max_val < predict_arr[i]:
+                max_val = predict_arr[i]
+                doc_label = i
+
+        if doc_label == 0 :
+            doc.predicted_label_name = LABELS.LABEL0
+        elif doc_label == 1:
+            doc.predicted_label_name = LABELS.LABEL1
+        elif doc_label == 2:
+            doc.predicted_label_name = LABELS.LABEL2
+        elif doc_label == 3:
+            doc.predicted_label_name = LABELS.LABEL3
+
+        print( doc.predicted_label_name )
+
+        doc.uncertainity_score = ( 1 - (max_val / sum) ) * 100
+        doc.save()
+
+
 # passing the df model gets trained on it.
 def train_model(model, train_data, validation_split = 0):
-  X_train, y_train = deep_learning_prep(train_data)
-  history = model.fit(X_train, y_train, epochs = EPOCHS, batch_size = 4, verbose = 1)
-  return model, history
+    X_train, y_train = deep_learning_prep(train_data)
+    history = model.fit(X_train, y_train, epochs = EPOCHS, batch_size = 4, verbose = 1)
+    return model, history
 
 
 def slice_docs_from_dataset(df, size):
@@ -198,4 +242,4 @@ def deep_learning_prep(train, test=-1):
         Y_test = pd.get_dummies(test[COLUMNS.CLASS]).values
         return X, Y, X_test, Y_test
     else:
-        return X,Y
+        return X, Y

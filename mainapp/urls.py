@@ -10,4 +10,5 @@ urlpatterns = [
     path('createpdf/', views.createPDF, name='createPDF'),
     path('inittrain/', views.initTrain, name='initTrain'),
     path('retrain/', views.reTrain, name='reTrain'),
+    path('predictdocs/', views.predictDocs, name='predictDocs'),
 ]

@@ -1,11 +1,10 @@
-from email.policy import HTTP
 from django.http import JsonResponse
-from mainapp.models import Document, TYPE_CHOICES, LABEL_CHOICES, TRAIN_CHOICES
+from mainapp.models import Document
 from mainapp.serializers import DocumentSerializer
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
-from ml.scripts.token_file_to_pdf import create_pdf_file, init_train, retrain_single_doc
+from ml.scripts.token_file_to_pdf import create_pdf_file, init_train, retrain_single_doc, preditDaily
 
 @api_view(['POST'])
 def createDocument(request):
@@ -66,6 +65,7 @@ def updateDocument(request):
     document.reviewed_label_name = reviewed_label_name
     document.uncertainity_score = 0
     document.save()
+    retrain_single_doc( document )
 
     serialized_docs = DocumentSerializer( document )
     return Response(serialized_docs.data, status=status.HTTP_200_OK)
@@ -82,7 +82,7 @@ def getMostUncertainDoc(request):
 
 @api_view(['GET'])
 def createPDF(request):
-    create_pdf_file(50)
+    create_pdf_file(10)
     return JsonResponse({"test" : "PDFs created"}, status=status.HTTP_200_OK)
 
 
@@ -97,3 +97,7 @@ def reTrain(request):
     doc = Document.objects.get( auto_id = 287 )
     retrain_single_doc( doc )
     return JsonResponse({"test" : "single model trained"}, status=status.HTTP_200_OK)
+
+def predictDocs(request):
+    preditDaily()
+    return JsonResponse({"test" : "model prediction done"}, status=status.HTTP_200_OK)
