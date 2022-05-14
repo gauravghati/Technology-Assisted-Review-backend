@@ -1,25 +1,24 @@
 from django.db import models
 from django.core.files.storage import FileSystemStorage
-from model_utils import Choices
 
 UPLOAD_ROOT = "../frontend-veritas/public/"
 upload_storage = FileSystemStorage(location=UPLOAD_ROOT)
 
-TYPE_CHOICES = Choices(
+TYPE_CHOICES = (
     ("pdf", "pdf"),
     ("text", "text"),
     ("pict", "pict")
 )
 
-LABEL_CHOICES = Choices(
+LABEL_CHOICES = (
     ("null", "null"),
-    ("label_0", "label_0"),
-    ("label_1", "label_1"),
-    ("label_2", "label_2"),
-    ("label_3", "label_3")
+    ("Label 0", "Label 0"),
+    ("Label 1", "Label 1"),
+    ("Label 2", "Label 2"),
+    ("Label 3", "Label 3")
 )
 
-TRAIN_CHOICES = Choices(
+TRAIN_CHOICES = (
     ("not_used", "not_used"),
     ("in_queue", "in_queue"),
     ("used", "used")
@@ -43,9 +42,9 @@ class Document(models.Model):
     class_b_predit_percentage = models.FloatField(('class b predict'), null=True, blank=False )
     class_c_predit_percentage = models.FloatField(('class c predict'), null=True, blank=False )
     class_d_predit_percentage = models.FloatField(('class d predict'), null=True, blank=False )
-    predicted_label_name = models.CharField(('Predicted Label Name'), choices=LABEL_CHOICES, max_length=50, default="-" )
-    reviewed_label_name = models.CharField(('Reviewed Label Name'), choices=LABEL_CHOICES, max_length=50, default="-" )
-    used_for_training = models.CharField(('Used For Training'), choices=TRAIN_CHOICES, max_length=50, default=0 )
+    predicted_label_name = models.CharField(('Predicted Label Name'), choices=LABEL_CHOICES, max_length=50, default="null" )
+    reviewed_label_name = models.CharField(('Reviewed Label Name'), choices=LABEL_CHOICES, max_length=50, default="null" )
+    used_for_training = models.CharField(('Used For Training'), choices=TRAIN_CHOICES, max_length=50, default="not_used" )
 
     class Meta:
         verbose_name = ('Document')
