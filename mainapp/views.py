@@ -1,5 +1,4 @@
 from django.http import JsonResponse
-from ipykernel import connect_qtconsole
 from mainapp.models import Document, Datasets, Variable
 from mainapp.serializers import DocumentSerializer, VariableSerializer, DatasetSerializer
 from rest_framework.response import Response
@@ -118,6 +117,7 @@ def createDataset(request):
     label_3_name = request.data['label3Name']
     label_4_name = request.data['label4Name']
     token_size = request.data['tokenSize']
+    initial_train_docs = request.data['initialDoc']
 
     new_dataset = Datasets( 
         dataset_name = dataset_name, 
@@ -125,7 +125,8 @@ def createDataset(request):
         label_2_name = label_2_name, 
         label_3_name = label_3_name,
         label_4_name = label_4_name,
-        token_size = token_size
+        token_size = token_size,
+        initial_train_docs = initial_train_docs
     )
     new_dataset.save()
     return JsonResponse({"test" : "Done Creation"}, status=status.HTTP_201_CREATED)
