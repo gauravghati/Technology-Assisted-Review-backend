@@ -1,5 +1,3 @@
-MAIN_PROJECT_LOCATION = "~/Desktop/Final-Year-Project/"
-
 BACKEND_FOLDER = "backend-veritas/"
 FRONTEND_FOLDER = "frontend-veritas/"
 PDF_FOLDER_LOCATION = "public/dataset/"
@@ -13,11 +11,6 @@ INIT_TEST_FILE = 'init_test.csv'
 
 BERT_MODEL = 'bert-base-uncased'
 CASED = 'uncased' in BERT_MODEL
-MAXLEN = 600
-INIT_EPOCHS = 20
-INCREMENTAL_EPOCHS = 1
-BATCH_SIZE = 4
-INQUE_MAXLEN = 24
 
 
 class dotdict(dict):

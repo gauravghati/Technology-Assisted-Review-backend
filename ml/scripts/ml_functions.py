@@ -7,7 +7,7 @@ import numpy as np
 from tqdm import tqdm
 import tensorflow as tf
 from tensorflow import keras
-from mainapp.models import Document
+from mainapp.models import Datasets, Document, Variable
 
 tf.compat.v1.disable_eager_execution()
 config = tf.compat.v1.ConfigProto()
@@ -19,10 +19,10 @@ warnings.filterwarnings('ignore')
 
 # calculate accuracy per label and return the array of 4 labels
 def calAccuracy( model ):
-    df = pd.read_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + INIT_TEST_FILE )
+    variable = Variable.objects.first()
+    df = pd.read_csv( variable.main_project_location + BACKEND_FOLDER + COMPONENT_FOLDER + variable.curr_dataset + '/' + INIT_TEST_FILE )
     X_df, Y_df = deep_learning_prep(df)
 
-    # model = keras.models.load_model( COMPONENT_FOLDER + TRAINED_MODEL )
     predict_arr = model.predict(X_df)
     df_Y_predict = np.array([])
     df_Y_true = np.array([])
@@ -49,18 +49,25 @@ def calAccuracy( model ):
 
 # adding documents of every class to the dataframe and in queue also
 def adding_single_doc_every_class( df, main_doc_label, curr_label ):
+    variable = Variable.objects.first()
     if main_doc_label == curr_label:
         return df
-
+    
     single_doc = Document.objects.filter (
+        dataset_name = variable.curr_dataset,
         predicted_label_name = curr_label,
         used_for_training = TRAIN_CHOICES.NOTUSED
     ).order_by('uncertainity_score').first()
 
+    if not single_doc :
+        single_doc = Document.objects.filter(
+            dataset_name = variable.curr_dataset,
+            used_for_training = TRAIN_CHOICES.NOTUSED
+        ).order_by('uncertainity_score').first()
+
     # pushing the most confident document of every label into the training queue
     single_doc.used_for_training = TRAIN_CHOICES.INQUE
     single_doc.save()
-
     val = {
         COLUMNS.ID : single_doc.auto_id, 
         COLUMNS.CLASS : label_to_class( curr_label ),
@@ -74,7 +81,8 @@ def adding_single_doc_every_class( df, main_doc_label, curr_label ):
 
 # Adding all documents of training queue to the dataframe
 def add_in_queue_docs( df ):
-    docs = Document.objects.filter( used_for_training = TRAIN_CHOICES.INQUE )
+    variable = Variable.objects.first()
+    docs = Document.objects.filter( dataset_name = variable.curr_dataset, used_for_training = TRAIN_CHOICES.INQUE )
 
     for single_doc in docs:
         curr_label = ( single_doc.reviewed_label_name ) if ( single_doc.is_reviewed ) else ( single_doc.predicted_label_name )
@@ -91,7 +99,8 @@ def add_in_queue_docs( df ):
 
 # when the accuracy increases this function will be called, it'll remove all the documents from the training Queue
 def empty_training_queue():
-    docs = Document.objects.filter( used_for_training = TRAIN_CHOICES.INQUE )
+    variable = Variable.objects.first()
+    docs = Document.objects.filter( dataset_name = variable.curr_dataset, used_for_training = TRAIN_CHOICES.INQUE )
     for doc in docs:
         doc.used_for_training = TRAIN_CHOICES.USED
         doc.save()
@@ -110,7 +119,8 @@ def label_to_class( main_label ):
 
 #removing docs predicted by model and saving only human reviewed docs for training 
 def remove_predicted_inque_doc():
-    docs = Document.objects.filter( is_reviewed = False, used_for_training = TRAIN_CHOICES.INQUE )
+    variable = Variable.objects.first()
+    docs = Document.objects.filter( dataset_name = variable.curr_dataset, is_reviewed = False, used_for_training = TRAIN_CHOICES.INQUE )
     for doc in docs:
         doc.used_for_training = TRAIN_CHOICES.NOTUSED
         doc.save()
@@ -118,6 +128,7 @@ def remove_predicted_inque_doc():
 
 # retraining => retraing model on single doc.
 def retrain_single_doc( main_doc ):
+    variable = Variable.objects.first()
     df = pd.DataFrame(columns = [COLUMNS.ID, COLUMNS.CLASS, COLUMNS.TITLE, COLUMNS.TEXT, COLUMNS.TOKEN])
     main_label = main_doc.reviewed_label_name
 
@@ -130,9 +141,10 @@ def retrain_single_doc( main_doc ):
     }
     df = df.append( val, ignore_index = True )
 
-    confident_queue_len = Document.objects.filter( is_reviewed = False, used_for_training = TRAIN_CHOICES.INQUE ).count()
+    confident_queue_len = Document.objects.filter( dataset_name = variable.curr_dataset, is_reviewed = False, used_for_training = TRAIN_CHOICES.INQUE ).count()
 
-    if confident_queue_len > INQUE_MAXLEN:
+    print( "InQue Length: ", confident_queue_len )
+    if confident_queue_len > variable.inque_maxlen:
         remove_predicted_inque_doc()
 
     df = add_in_queue_docs( df )
@@ -143,10 +155,10 @@ def retrain_single_doc( main_doc ):
     df = adding_single_doc_every_class( df, main_label, LABELS.LABEL2 )
     df = adding_single_doc_every_class( df, main_label, LABELS.LABEL3 )
 
-    model = keras.models.load_model( COMPONENT_FOLDER + TRAINED_MODEL )
+    model = keras.models.load_model( COMPONENT_FOLDER + variable.curr_dataset + '/' + TRAINED_MODEL )
 
     arr1, old_accuracy = calAccuracy( model )
-    train_model( model, df )
+    increment_train_model( model, df )
     arr2, new_accuracy = calAccuracy( model )
 
     print( "New Accuracy: ", new_accuracy )
@@ -155,33 +167,67 @@ def retrain_single_doc( main_doc ):
     # saving model only if new accuracy is greater than old accuracy
     if new_accuracy > old_accuracy :
         empty_training_queue()
-        model.save( COMPONENT_FOLDER + TRAINED_MODEL )
+        model.save( COMPONENT_FOLDER + variable.curr_dataset + '/' + TRAINED_MODEL )
+
+        curr_dataset = Datasets.objects.get( dataset_name = variable.curr_dataset )
+        curr_dataset.total_accuracy = new_accuracy
+        curr_dataset.label1_accuracy = arr2[0]
+        curr_dataset.label2_accuracy = arr2[1]
+        curr_dataset.label3_accuracy = arr2[2]
+        curr_dataset.label4_accuracy = arr2[3]
+        curr_dataset.save()
 
 
 # initial training => fetching data from csv file, by default 50 Documents per class and intially training the model
-def init_train( NUM_TRAIN = 50 ):
-    df = pd.read_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + COMPLETE_DATAFILE )
-    remain_df, train = slice_docs_from_dataset( df, NUM_TRAIN )
-    model = keras.models.load_model( COMPONENT_FOLDER + BLANK_MODEL )
-    train_model( model, train )
-    model.save( COMPONENT_FOLDER + TRAINED_MODEL )
-    remain_df.to_csv( MAIN_PROJECT_LOCATION + BACKEND_FOLDER + COMPONENT_FOLDER + REMAINING_DATAFILE )
+def initial_training():
+    variable = Variable.objects.first()
+    curr_dataset = Datasets.objects.get( dataset_name = variable.curr_dataset )
+    documents_inque = Document.objects.filter( dataset_name = curr_dataset.dataset_name, used_for_training = TRAIN_CHOICES.INQUE )
 
-
-def predit_docs():
-    docs = Document.objects.all()
     df = pd.DataFrame(columns = [COLUMNS.ID, COLUMNS.CLASS, COLUMNS.TITLE, COLUMNS.TEXT, COLUMNS.TOKEN])
-    model = keras.models.load_model( COMPONENT_FOLDER + TRAINED_MODEL )
+
+    for document in documents_inque :
+        df = add_single_doc_in_df(df, document, document.reviewed_label_name)
+
+    model = keras.models.load_model( COMPONENT_FOLDER + variable.curr_dataset + '/' + BLANK_MODEL )
+
+    X_train, y_train = deep_learning_prep(df)
+    model.fit(X_train, y_train, epochs = variable.intial_epochs, batch_size = variable.batch_size, verbose = 1)
+
+    model.save( COMPONENT_FOLDER + variable.curr_dataset + '/' + TRAINED_MODEL )
+
+    for document in documents_inque :
+        document.used_for_training = TRAIN_CHOICES.USED
+        document.save()
+
+    predict_docs()
+
+    # df = pd.read_csv( variable.main_project_location + BACKEND_FOLDER + COMPONENT_FOLDER + variable.curr_dataset + '/' + COMPLETE_DATAFILE )
+    # remain_df, train = slice_docs_from_dataset( df, NUM_TRAIN )
+    # model = keras.models.load_model( COMPONENT_FOLDER + variable.curr_dataset + '/' + BLANK_MODEL )
+    # train_model( model, train )
+    # model.save( COMPONENT_FOLDER + variable.curr_dataset + '/' + TRAINED_MODEL )
+    # remain_df.to_csv( variable.main_project_location + BACKEND_FOLDER + COMPONENT_FOLDER + variable.curr_dataset + '/' + REMAINING_DATAFILE )
+
+
+def add_single_doc_in_df(df, document, label = ""):
+    val = {
+        COLUMNS.ID : document.auto_id,
+        COLUMNS.TITLE : document.document_name,
+        COLUMNS.TEXT : document.document_text,
+        COLUMNS.TOKEN : document.document_token,
+        COLUMNS.CLASS : label,
+    }
+    return df.append( val, ignore_index = True )
+
+def predict_docs():
+    variable = Variable.objects.first()
+    docs = Document.objects.filter(dataset_name = variable.curr_dataset)
+    df = pd.DataFrame(columns = [COLUMNS.ID, COLUMNS.CLASS, COLUMNS.TITLE, COLUMNS.TEXT, COLUMNS.TOKEN])
+    model = keras.models.load_model( COMPONENT_FOLDER + variable.curr_dataset + '/' + TRAINED_MODEL )
 
     for doc in docs :
-        val = {
-            COLUMNS.ID : doc.auto_id,
-            COLUMNS.TITLE : doc.document_name,
-            COLUMNS.TEXT : doc.document_text,
-            COLUMNS.TOKEN : doc.document_token,
-            COLUMNS.CLASS : "",
-        }
-        df = df.append( val, ignore_index = True )
+        df = add_single_doc_in_df( df, doc )
     
     X_df, Y_df = deep_learning_prep(df)
     predict_arr = model.predict(X_df)
@@ -218,11 +264,23 @@ def predit_docs():
         doc.uncertainity_score = ( 1 - (max_val / sum) ) * 100
         doc.save()
 
+    acc_arr, tot_acc = calAccuracy( model )
+
+    curr_dataset = Datasets.objects.get( dataset_name = variable.curr_dataset )
+
+    curr_dataset.total_accuracy = tot_acc
+    curr_dataset.label1_accuracy = acc_arr[0]
+    curr_dataset.label2_accuracy = acc_arr[1]
+    curr_dataset.label3_accuracy = acc_arr[2]
+    curr_dataset.label4_accuracy = acc_arr[3]
+    curr_dataset.save()
+
 
 # passing the df model gets trained on it.
-def train_model(model, train_data, validation_split = 0):
+def increment_train_model(model, train_data):
+    variable = Variable.objects.first()
     X_train, y_train = deep_learning_prep(train_data)
-    history = model.fit(X_train, y_train, epochs = INCREMENTAL_EPOCHS, batch_size = BATCH_SIZE, verbose = 1)
+    history = model.fit(X_train, y_train, epochs = variable.increment_epochs, batch_size = variable.batch_size, verbose = 1)
     return model, history
 
 
@@ -248,20 +306,22 @@ def slice_docs_from_dataset(df, size):
 
 # doing padding and dividing the dataset into X and Y colums
 def deep_learning_prep(train, test=-1):
-    X = np.zeros((train.shape[0],MAXLEN),dtype=np.int)
+    variable = Variable.objects.first()
+    curr_dataset = Datasets.objects.get( dataset_name = variable.curr_dataset )
 
+    X = np.zeros((train.shape[0], curr_dataset.token_size ),dtype=np.int)
     for i,ids in tqdm(enumerate(list(train[COLUMNS.TOKEN]))):
-        input_ids = [int(i) for i in ids.split()[:MAXLEN]]
+        input_ids = [int(i) for i in ids.split()[: curr_dataset.token_size ]]
         inp_len = len(input_ids)
         X[i,:inp_len] = np.array(input_ids)
 
     Y = pd.get_dummies(train[COLUMNS.CLASS]).values
     
     if(type(test) is not int):
-        X_test = np.zeros((test.shape[0],MAXLEN),dtype=np.int)
+        X_test = np.zeros((test.shape[0], curr_dataset.token_size ),dtype=np.int)
 
         for i,ids in tqdm(enumerate(list(test[COLUMNS.TOKEN]))):
-            input_ids = [int(i) for i in ids.split()[:MAXLEN]]
+            input_ids = [int(i) for i in ids.split()[: curr_dataset.token_size ]]
             inp_len = len(input_ids)
             X_test[i,:inp_len] = np.array(input_ids)
 
