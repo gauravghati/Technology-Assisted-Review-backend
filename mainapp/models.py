@@ -82,7 +82,7 @@ class Datasets( models.Model ):
 
 class Variable( models.Model ):
     main_project_location = models.CharField(('Main Project Path'), max_length=1000 )
-    intial_epochs = models.IntegerField(('Intial Epochs'), default=0 )
+    initial_epochs = models.IntegerField(('Intial Epochs'), default=0 )
     increment_epochs = models.IntegerField(('Incremental Epochs'), default=0 )
     inque_maxlen = models.IntegerField(('Inque Maxlen'), default=0 )
     batch_size = models.IntegerField(('Batch Size'), default=0 )

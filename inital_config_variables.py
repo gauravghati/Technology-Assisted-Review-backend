@@ -4,6 +4,7 @@ os.environ.setdefault("DJANGO_SETTINGS_MODULE", "veritas.settings")
 import django
 django.setup()
 
+from django.contrib.auth.models import User
 from mainapp.models import Variable, Datasets
 
 # saving sample datafile
@@ -22,9 +23,15 @@ prev_dir = os.path.abspath(os.path.join(curr_dir, os.pardir)) + "/"
 global_variable = Variable(
     curr_dataset = "AG_News",
     main_project_location = prev_dir,
-    intial_epochs = 20,
+    initial_epochs = 20,
     increment_epochs = 1,
     inque_maxlen = 24,
     batch_size = 4
 )
 global_variable.save()
+
+superuser = User(username='admin')
+superuser.set_password('1234')
+superuser.is_superuser = True
+superuser.is_staff = True
+superuser.save()

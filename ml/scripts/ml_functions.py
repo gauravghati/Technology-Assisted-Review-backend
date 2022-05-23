@@ -192,7 +192,7 @@ def initial_training():
     model = keras.models.load_model( COMPONENT_FOLDER + variable.curr_dataset + '/' + BLANK_MODEL )
 
     X_train, y_train = deep_learning_prep(df)
-    model.fit(X_train, y_train, epochs = variable.intial_epochs, batch_size = variable.batch_size, verbose = 1)
+    model.fit(X_train, y_train, epochs = variable.initial_epochs, batch_size = variable.batch_size, verbose = 1)
 
     model.save( COMPONENT_FOLDER + variable.curr_dataset + '/' + TRAINED_MODEL )
 

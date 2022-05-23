@@ -135,7 +135,7 @@ def createDataset(request):
 @api_view(['POST'])
 def updateVars(request):
     main_project_location = request.data['main_project_location']
-    intial_epochs = request.data['intial_epochs']
+    initial_epochs = request.data['initial_epochs']
     increment_epochs = request.data['increment_epochs']
     inque_maxlen = request.data['inque_maxlen']
     batch_size = request.data['batch_size']
@@ -145,7 +145,7 @@ def updateVars(request):
 
     variable.curr_dataset = curr_dataset_name
     variable.main_project_location = main_project_location
-    variable.intial_epochs = intial_epochs
+    variable.initial_epochs = initial_epochs
     variable.increment_epochs = increment_epochs
     variable.inque_maxlen = inque_maxlen
     variable.batch_size = batch_size
