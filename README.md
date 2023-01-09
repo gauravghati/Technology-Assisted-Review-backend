@@ -39,9 +39,9 @@ The goal of a Technology assisted review is that the documents will get reviewed
 
 For completly running the project, We'll need to install both backend and fronend servers.
 
-For backend Installation Guide is Given here : [Backend Installtion README.md file](backend/README.md)
+For backend Installation Guide is Given here : [Backend Installtion README.md file](https://github.com/Veritasosrb/veridical/blob/PICT-2022-TAR-2.0/PICT-2022-TAR-2.0/backend/README.md)
 
-And for frontend it's here : [Frontend Installation README.md file](frontend/README.md)
+And for frontend it's here : [Frontend Installation README.md file](https://github.com/Veritasosrb/veridical/blob/PICT-2022-TAR-2.0/PICT-2022-TAR-2.0/frontend/README.md)
 
 
 ## 5) WEB INTERFACE
